@@ -5,8 +5,8 @@ from selenium.webdriver.common.by import By
 from pprint import pprint
 
 browser = webdriver.Chrome()
-browser.get("http://shishjewels.com/product-category/watches/")
-time.sleep(1)
+url = "http://shishjewels.com/product-category/rings/"
+time.sleep(2)
 
 def getProductDetail(url):
   product_description = {}
@@ -20,44 +20,75 @@ def getProductDetail(url):
   product_meta = product_detail.find('div', 'product_meta')
   
   product_description["product_detail_img"] = product_detail_img
-  product_description["product_short_description"] = product_short_description
-  product_description["product_meta"] = product_meta
+  product_description["product_short_description"] = str(product_short_description)
+  product_description["product_meta"] = str(product_meta)
   return product_description
 
-def getProductList():
+def getProductList(url):
+  browser.get(url)
   product_list_ui = browser.find_element(By.XPATH, "/html/body/div[2]/div[2]/div/div/div/div/main/ul")  # get all product list
   all_products = product_list_ui.find_elements(By.XPATH, ".//li")
 
   count = 1
-  reqProductList = {"category": "Watches", "products": []}
+  products = []
+  threads = []
   for product in all_products:
     product_url = product.find_element(By.XPATH, ".//a").get_attribute("href")
-    product_description = getProductDetail(product_url)
     product_container = product.find_element(By.CLASS_NAME, "woocommerce-product-inner")
     product_img = product_container.find_element(By.XPATH, './/img[@class="attachment-woocommerce_thumbnail size-woocommerce_thumbnail"]').get_attribute("src")
     product_h3_text = product_container.find_element(By.XPATH, './/h3[@class="woocommerce-product-title"]/a').text
 
-    reqProductList["products"].append({
+    thread = threading.Thread(target=products.append({
       "product_url": product_url,
       "product_img": product_img,
       "product_title": product_h3_text,
-      "product_description": product_description
-    })
+      "product_description": getProductDetail(product_url)
+    }))
+    threads.append(thread)
+    thread.start()
+
     print(count)
     count += 1
-  return reqProductList
+  # joining threads
+  for thread in threads:
+    thread.join()
 
-product_list = getProductList()
-print(product_list)
+  return products
+
+def fetchByPages(): # function used to fetch data by number of pages
+  browser.get(url)
+  ui_page_list = browser.find_element(By.XPATH, "/html/body/div[2]/div[2]/div/div/div/div/main/nav/ul")
+  all_page_list = ui_page_list.find_elements(By.XPATH, ".//li")
+  all_products_list = []
+
+  threads = [] # created thread here
+  for page in range(len(all_page_list) - 1):
+    if page == 0:
+      thread = threading.Thread(target=all_products_list.extend(getProductList(url)), args=(page,))
+      threads.append(thread)
+      thread.start()
+    else:
+      new_url = url + "/page/" + str(page + 1)
+      thread = threading.Thread(target=all_products_list.extend(getProductList(new_url)), args=(page,))
+      threads.append(thread)
+      thread.start()
+  # joining threads
+  for thread in threads:
+    thread.join()
+
+  return all_products_list
+
+all_products = fetchByPages()
+pprint(len(all_products))
 browser.quit()
 
 # filename = "data.json"
 # if os.path.exists(filename):
 #   with open(filename, 'r') as file:
 #     existing_data = json.load(file)
-#     existing_data.update(reqProductList)
+#     existing_data.update(all_products)
 #     with open(filename, 'w') as file:
 #         json.dump(existing_data, file, indent=4)
 # else:
 #   with open(filename, 'w') as file:
-#     json.dump(reqProductList, file, indent=4)
+#     json.dump(all_products, file, indent=4)
