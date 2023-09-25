@@ -30,5 +30,3 @@ for cards in rowCards:
         })
 
 print(allRequiredATags)
-
-
