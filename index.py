@@ -26,7 +26,16 @@
 
 # print("Execution Time: {}".format(end - start))
 
-my_list = [1, 2, 3, 4, 5]
-for item in my_list:
-    print(item)
-    break
+# my_list = [1, 2, 3, 4, 5]
+# for item in my_list:
+#     print(item)
+#     break
+
+
+import json
+
+with open('songs/bollywood_popular_songs.json', 'r') as file:
+  data = json.load(file)
+
+length = len(data)
+print("Length of JSON array:", length)
